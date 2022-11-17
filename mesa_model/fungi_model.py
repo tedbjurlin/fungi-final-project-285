@@ -30,6 +30,7 @@ class FungiModel(mesa.Model):
         self.schedule = mesa.time.RandomActivation(self)
         self.space = mesa.space.ContinuousSpace(width/2, height/2, False, -width/2, -height/2)
         self.hyphae = []
+        self.spitz_to_add = []
         self.make_agents()
         self.running = True
 
@@ -56,7 +57,8 @@ class FungiModel(mesa.Model):
                 self.next_id(),
                 self,
                 spitz_pos,
-                dir
+                dir,
+                hypha
             )
             self.space.place_agent(hypha, pos)
             self.space.place_agent(spitz, spitz_pos)
@@ -68,3 +70,9 @@ class FungiModel(mesa.Model):
 
     def step(self):
         self.schedule.step()
+        
+        for s in self.spitz_to_add:
+            self.space.place_agent(s, s.pos)
+            self.schedule.add(s)
+            
+        self.spitz_to_add = []

@@ -25,6 +25,8 @@ class Hypha(mesa.Agent):
         self.end_pos = np.array(end_pos)
         self.direction = direction
         self.size = size
+        self.parents = []
+        self.children = []
 
     def step(self):
         pass

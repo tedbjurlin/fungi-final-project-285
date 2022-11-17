@@ -12,6 +12,7 @@ class Spitzenkorper(mesa.Agent):
         model,
         pos,
         direction,
+        hypha
     ):
         """
         Create a new spitzenkorper agent.
@@ -21,40 +22,27 @@ class Spitzenkorper(mesa.Agent):
             pos: Starting position.
             direction: the direction that the spitzenkorper in degrees going 
             counterclockwise from east.
+            hypha: the hypha that the spitzenkorper is attatched to
         """
         super().__init__(unique_id, model)
         self.pos = np.array(pos)
         self.direction = direction
-        
-    def cross_product(self, p1, p2): # borrowed from https://algorithmtutor.com/Computational-Geometry/Determining-if-two-consecutive-segments-turn-left-or-right/
-        return p1[0] * p2[1] - p2[0] * p1[1]
+        self.hypha = hypha
     
-    def on_segment(self, p1, p2, p):
-        return min(p1[0], p2[0]) <= p[0] <= max(p1[0], p2[0]) and min(p1[1], p2[1]) <= p[1] <= max(p1[1], p2[1])
-    
-    def direct(self, p1, p2, p3): # borrowed from https://algorithmtutor.com/Computational-Geometry/Determining-if-two-consecutive-segments-turn-left-or-right/
-        return self.cross_product(np.subtract(p3, p1), np.subtract(p2, p1))
+    def get_intersection(self, p0, p1, p2, p3): # from https://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect
+        s1_x = p1[0] - p0[0]
+        s1_y = p1[1] - p0[1]
+        s2_x = p3[0] - p2[0]
+        s2_y = p3[1] - p2[1]
 
-    def intersect(self, p1, p2, p3, p4): # borrowed from https://algorithmtutor.com/Computational-Geometry/Check-if-two-line-segment-intersect/
-        d1 = self.direct(p3, p4, p1)
-        d2 = self.direct(p3, p4, p2)
-        d3 = self.direct(p1, p2, p3)
-        d4 = self.direct(p1, p2, p4)
+        s = (-s1_y * (p0[0] - p2[0]) + s1_x * (p0[1] - p2[1])) / (-s2_x * s1_y + s1_x * s2_y)
+        t = ( s2_x * (p0[1] - p2[1]) - s2_y * (p0[0] - p2[0])) / (-s2_x * s1_y + s1_x * s2_y)
 
-        if ((d1 > 0 and d2 < 0) or (d1 < 0 and d2 > 0)) and \
-            ((d3 > 0 and d4 < 0) or (d3 < 0 and d4 > 0)):
-            return True
+        if (s >= 0 and s <= 1 and t >= 0 and t <= 1):
+            # Collision detected
+            return True, p0[0] + (t * s1_x), p0[1] + (t * s1_y)
 
-        elif d1 == 0 and self.on_segment(p3, p4, p1):
-            return True
-        elif d2 == 0 and self.on_segment(p3, p4, p2):
-            return True
-        elif d3 == 0 and self.on_segment(p1, p2, p3):
-            return True
-        elif d4 == 0 and self.on_segment(p1, p2, p4):
-            return True
-        else:
-            return False
+        return False, None, None; # No collision
 
     def step(self):
         old_pos = self.pos
@@ -77,23 +65,51 @@ class Spitzenkorper(mesa.Agent):
             size
         )
         
-        for h in self.model.hyphae:
-            if self.intersect(hypha.pos, hypha.end_pos, h.pos, h.end_pos):
-                print('intersect')
+        hypha.parents.append(self.hypha)
+
         
-        if random.random() < 0.05:
+        for h in self.model.hyphae:
+            b, x0, y0 = self.get_intersection(hypha.pos, hypha.end_pos, h.pos, h.end_pos)
+            if b and h != self.hypha and sorted(hypha.parents) != sorted(h.parents):
+                print(x0, y0)
+                print('intersect')
+                
+                size = self.model.space.get_distance(old_pos, np.array((x0, y0)))
+                
+                hypha = Hypha(
+                    self.model.next_id(),
+                    self.model,
+                    old_pos,
+                    np.array((x0, y0)),
+                    self.direction,
+                    size
+                )
+                
+                hypha.parents.append(self.hypha)
+                self.hypha.children.append(hypha)
+                self.hypha = hypha
+                
+                self.model.space.place_agent(hypha, old_pos)
+                self.model.schedule.add(hypha)
+                self.model.schedule.remove(self)
+                return
+                        
+        self.hypha.children.append(hypha)
+        self.hypha = hypha
+        
+        if random.random() < 0.2:
             spitz = Spitzenkorper(
                 self.model.next_id(),
                 self.model,
                 self.pos,
-                self.direction + (math.pi / 4)
+                self.direction + (math.pi / 4) * (random.random() + 0.05),
+                self.hypha
             )
-            self.direction -= math.pi / 4
+            self.direction -= math.pi / 4 * (random.random() + 0.05)
             
-            self.model.space.place_agent(spitz, self.pos)
-            self.model.schedule.add(spitz)
+            self.model.spitz_to_add.append(spitz)
         
         self.model.space.move_agent(self, self.pos)
         self.model.space.place_agent(hypha, old_pos)
         self.model.schedule.add(hypha)
-        
+        self.model.hyphae.append(hypha)
