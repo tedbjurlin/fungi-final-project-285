@@ -47,12 +47,51 @@ class Spitzenkorper(mesa.Agent):
     def step(self):
         old_pos = self.pos
         
-        self.direction = ((random.random() * math.pi / 4) - (math.pi / 8)) + self.direction
+        print(old_pos)
+
+        self.direction = self.choose_direction()
         
-        size = random.random() * math.sqrt(128)
+        size = self.choose_length()
         
         x = old_pos[0] + math.cos(self.direction) * size
         y = old_pos[1] + math.sin(self.direction) * size
+        
+        # it works ¯\_(ツ)_/¯
+        if x >= self.model.width:
+            print(self.model.width, old_pos[0], size)
+            self.direction = math.acos((self.model.width - old_pos[0]) / size)
+            if old_pos[1] > y:
+                self.direction *= -1
+            x = self.model.width - 1
+            y = old_pos[1] + math.sin(self.direction) * size
+        elif y >= self.model.height:
+            print(self.model.height, old_pos[1], size)
+            self.direction = math.asin((self.model.height - old_pos[1]) / size)
+            if old_pos[0] > x:
+                self.direction += (math.pi / 2 - self.direction) * 2
+            x = old_pos[0] + math.cos(self.direction) * size
+            y = self.model.height - 1
+        elif x <= 0:
+            print(0, old_pos[0], size)
+            self.direction = math.acos(-old_pos[0] / size)
+            if old_pos[1] > y:
+                self.direction += (math.pi - self.direction) * 2
+            x = 1
+            y = old_pos[1] + math.sin(self.direction) * size
+        elif y <= 0:
+            print(0, old_pos[1], size)
+            self.direction = math.asin(-old_pos[1] / size)
+            if old_pos[0] > x:
+                self.direction -= (3 * math.pi / 2 - self.direction) * 2
+            y = 1
+            x = old_pos[0] + math.cos(self.direction) * size
+        
+        if x >= self.model.width \
+            or y <= 0 \
+            or y >= self.model.height \
+            or x <= 0:
+            self.model.schedule.remove(self)
+            return
         
         self.pos = np.array((x, y))
         
@@ -68,11 +107,9 @@ class Spitzenkorper(mesa.Agent):
         hypha.parents.append(self.hypha)
 
         
-        for h in self.model.hyphae:
+        for h in self.model.hyphae[int(old_pos[0] / 10)][int(old_pos[1] // 10)]:
             b, x0, y0 = self.get_intersection(hypha.pos, hypha.end_pos, h.pos, h.end_pos)
             if b and h != self.hypha and sorted(hypha.parents) != sorted(h.parents):
-                print(x0, y0)
-                print('intersect')
                 
                 size = self.model.space.get_distance(old_pos, np.array((x0, y0)))
                 
@@ -88,6 +125,32 @@ class Spitzenkorper(mesa.Agent):
                 hypha.parents.append(self.hypha)
                 self.hypha.children.append(hypha)
                 self.hypha = hypha
+                self.model.hyphae[int(old_pos[0] / 10)][int(old_pos[1] // 10)].append(hypha)
+                
+                self.model.space.place_agent(hypha, old_pos)
+                self.model.schedule.add(hypha)
+                self.model.schedule.remove(self)
+                return
+
+        for h in self.model.hyphae[int(self.pos[0] / 10)][int(self.pos[1] // 10)]:
+            b, x0, y0 = self.get_intersection(hypha.pos, hypha.end_pos, h.pos, h.end_pos)
+            if b and h != self.hypha and sorted(hypha.parents) != sorted(h.parents):
+                
+                size = self.model.space.get_distance(old_pos, np.array((x0, y0)))
+                
+                hypha = Hypha(
+                    self.model.next_id(),
+                    self.model,
+                    old_pos,
+                    np.array((x0, y0)),
+                    self.direction,
+                    size
+                )
+                
+                hypha.parents.append(self.hypha)
+                self.hypha.children.append(hypha)
+                self.hypha = hypha
+                self.model.hyphae[int(old_pos[0] / 10)][int(old_pos[1] // 10)].append(hypha)
                 
                 self.model.space.place_agent(hypha, old_pos)
                 self.model.schedule.add(hypha)
@@ -97,19 +160,31 @@ class Spitzenkorper(mesa.Agent):
         self.hypha.children.append(hypha)
         self.hypha = hypha
         
-        if random.random() < 0.2:
-            spitz = Spitzenkorper(
+        if self.branch_chance():
+            self.branch_function()
+        
+        self.model.space.move_agent(self, self.pos)
+        self.model.space.place_agent(hypha, old_pos)
+        self.model.schedule.add(hypha)
+        self.model.hyphae[int(old_pos[0] / 10)][int(old_pos[1] // 10)].append(hypha)
+
+    def choose_length(self):
+        return random.random() * math.sqrt(128)
+
+    def choose_direction(self):
+        return ((random.random() * math.pi / 4) - (math.pi / 8)) + self.direction
+
+    def branch_function(self):
+        spitz = Spitzenkorper(
                 self.model.next_id(),
                 self.model,
                 self.pos,
                 self.direction + (math.pi / 4) * (random.random() + 0.05),
                 self.hypha
             )
-            self.direction -= math.pi / 4 * (random.random() + 0.05)
+        self.direction -= math.pi / 4 * (random.random() + 0.05)
             
-            self.model.spitz_to_add.append(spitz)
-        
-        self.model.space.move_agent(self, self.pos)
-        self.model.space.place_agent(hypha, old_pos)
-        self.model.schedule.add(hypha)
-        self.model.hyphae.append(hypha)
+        self.model.spitz_to_add.append(spitz)
+
+    def branch_chance(self):
+        return random.random() < 1

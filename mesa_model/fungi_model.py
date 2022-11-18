@@ -14,7 +14,7 @@ class FungiModel(mesa.Model):
         height=100,
     ):
         """
-        Create a new Flockers model.
+        Create a new Flockers model.pip
 
         Args:
             population: Number of Boids
@@ -26,10 +26,20 @@ class FungiModel(mesa.Model):
             cohere, separate, match: factors for the relative importance of
                     the three drives."""
         super().__init__()
+        self.width = width
+        if self.width % 10 != 0:
+            raise Exception('Width must be divisible by 10!')
+        self.height = height
+        if self.height % 10 != 0:
+            raise Exception('Height must be divisible by 10!')
         self.init_pop = 8
         self.schedule = mesa.time.RandomActivation(self)
-        self.space = mesa.space.ContinuousSpace(width/2, height/2, False, -width/2, -height/2)
+        self.space = mesa.space.ContinuousSpace(width, height, False)
         self.hyphae = []
+        for i in range(int(self.width / 10)):
+            self.hyphae.append([])
+            for j in range(int(self.height / 10)):
+                self.hyphae[i].append([])
         self.spitz_to_add = []
         self.make_agents()
         self.running = True
@@ -39,11 +49,11 @@ class FungiModel(mesa.Model):
         Create self.population agents, with random positions and starting headings.
         """
         for i in range(self.init_pop):
-            pos = np.array((0, 0))
+            pos = np.array((self.width / 2, self.height / 2))
             dir = i * (math.pi / 4)
             size = 128 ** (1/2)
-            spitz_x = math.cos(dir) * size
-            spitz_y = math.sin(dir) * size
+            spitz_x = math.cos(dir) * size + pos[0]
+            spitz_y = math.sin(dir) * size + pos[1]
             spitz_pos = np.array((spitz_x, spitz_y))
             hypha = Hypha(
                 self.next_id(),
@@ -63,7 +73,7 @@ class FungiModel(mesa.Model):
             self.space.place_agent(hypha, pos)
             self.space.place_agent(spitz, spitz_pos)
             
-            self.hyphae.append(hypha)
+            self.hyphae[int(pos[0] / 10)][int(pos[1] / 10)].append(hypha)
             
             self.schedule.add(hypha)
             self.schedule.add(spitz)
@@ -76,3 +86,6 @@ class FungiModel(mesa.Model):
             self.schedule.add(s)
             
         self.spitz_to_add = []
+        
+        if self.schedule.get_agent_count() == 0:
+            self.running = False
