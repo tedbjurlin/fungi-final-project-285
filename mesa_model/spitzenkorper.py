@@ -107,7 +107,7 @@ class Spitzenkorper(mesa.Agent):
         hypha.parents.append(self.hypha)
 
         
-        for h in self.model.hyphae[int(old_pos[0] / 10)][int(old_pos[1] // 10)]:
+        for h in self.model.hyphae:
             b, x0, y0 = self.get_intersection(hypha.pos, hypha.end_pos, h.pos, h.end_pos)
             if b and h != self.hypha and sorted(hypha.parents) != sorted(h.parents):
                 
@@ -125,32 +125,7 @@ class Spitzenkorper(mesa.Agent):
                 hypha.parents.append(self.hypha)
                 self.hypha.children.append(hypha)
                 self.hypha = hypha
-                self.model.hyphae[int(old_pos[0] / 10)][int(old_pos[1] // 10)].append(hypha)
-                
-                self.model.space.place_agent(hypha, old_pos)
-                self.model.schedule.add(hypha)
-                self.model.schedule.remove(self)
-                return
-
-        for h in self.model.hyphae[int(self.pos[0] / 10)][int(self.pos[1] // 10)]:
-            b, x0, y0 = self.get_intersection(hypha.pos, hypha.end_pos, h.pos, h.end_pos)
-            if b and h != self.hypha and sorted(hypha.parents) != sorted(h.parents):
-                
-                size = self.model.space.get_distance(old_pos, np.array((x0, y0)))
-                
-                hypha = Hypha(
-                    self.model.next_id(),
-                    self.model,
-                    old_pos,
-                    np.array((x0, y0)),
-                    self.direction,
-                    size
-                )
-                
-                hypha.parents.append(self.hypha)
-                self.hypha.children.append(hypha)
-                self.hypha = hypha
-                self.model.hyphae[int(old_pos[0] / 10)][int(old_pos[1] // 10)].append(hypha)
+                self.model.hyphae.append(hypha)
                 
                 self.model.space.place_agent(hypha, old_pos)
                 self.model.schedule.add(hypha)
@@ -166,7 +141,7 @@ class Spitzenkorper(mesa.Agent):
         self.model.space.move_agent(self, self.pos)
         self.model.space.place_agent(hypha, old_pos)
         self.model.schedule.add(hypha)
-        self.model.hyphae[int(old_pos[0] / 10)][int(old_pos[1] // 10)].append(hypha)
+        self.model.hyphae.append(hypha)
 
     def choose_length(self):
         return random.random() * math.sqrt(128)
