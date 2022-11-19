@@ -2,16 +2,18 @@ import mesa
 import numpy as np
 import math
 
-from .hypha import Hypha
-from .spitzenkorper import Spitzenkorper
+from hypha import Hypha
+from spitzenkorper import Spitzenkorper
 
 class FungiModel(mesa.Model):
     
     
     def __init__(
         self,
-        width=100,
-        height=100,
+        width=500,
+        height=500,
+        pixel_width=10,
+        pixel_height=10
     ):
         """
         Create a new Flockers model.pip
@@ -27,27 +29,28 @@ class FungiModel(mesa.Model):
                     the three drives."""
         super().__init__()
         self.width = width
-        if self.width % 10 != 0:
-            raise Exception('Width must be divisible by 10!')
+        self.pixel_width = pixel_width
+        if self.width % self.pixel_width != 0:
+            raise Exception('Width must be evenly divisible by pixel_width!')
         self.height = height
-        if self.height % 10 != 0:
-            raise Exception('Height must be divisible by 10!')
+        self.pixel_height = pixel_height
+        if self.height % self.pixel_height != 0:
+            raise Exception('Height must be evenly divisible by pixel_height!')
         self.init_pop = 8
         self.schedule = mesa.time.RandomActivation(self)
         self.space = mesa.space.ContinuousSpace(width, height, False)
         self.hyphae = []
-        for i in range(int(self.width / 10)):
+        for i in range(int(self.width / self.pixel_width)):
             self.hyphae.append([])
-            for j in range(int(self.height / 10)):
+            for j in range(int(self.height / self.pixel_height)):
                 self.hyphae[i].append([])
         self.spitz_to_add = []
         self.make_agents()
         self.running = True
 
     def make_agents(self):
-        """
-        Create self.population agents, with random positions and starting headings.
-        """
+        
+        
         for i in range(self.init_pop):
             pos = np.array((self.width / 2, self.height / 2))
             dir = i * (math.pi / 4)
@@ -73,7 +76,15 @@ class FungiModel(mesa.Model):
             self.space.place_agent(hypha, pos)
             self.space.place_agent(spitz, spitz_pos)
             
-            self.hyphae[int(pos[0] / 10)][int(pos[1] / 10)].append(hypha)
+            self.hyphae = spitz.add_hyphae(
+                pos,
+                spitz_pos,
+                dir,
+                self.hyphae,
+                self.pixel_width,
+                self.pixel_height,
+                hypha
+            )
             
             self.schedule.add(hypha)
             self.schedule.add(spitz)
