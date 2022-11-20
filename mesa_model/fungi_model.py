@@ -2,8 +2,8 @@ import mesa
 import numpy as np
 import math
 
-from hypha import Hypha
-from spitzenkorper import Spitzenkorper
+from .hypha import Hypha
+from .spitzenkorper import Spitzenkorper
 
 class FungiModel(mesa.Model):
     

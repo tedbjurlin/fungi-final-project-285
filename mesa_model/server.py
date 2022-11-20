@@ -16,8 +16,8 @@ fungi_canvas = FungiCanvas(fungi_draw, 500, 500)
 model_params = {
     "width": 500,
     "height": 500,
-    "pixel_width": 50,
-    "pixel_height": 50
+    "pixel_width": 5,
+    "pixel_height": 5
 }
 
 server = mesa.visualization.ModularServer(
