@@ -1,5 +1,6 @@
 import mesa
-from .hypha import Hypha
+from .agents import Hypha
+from matplotlib import colors
 
 # base for continuous visualisation borrowed from mesa example project boid_flockers
 
@@ -23,6 +24,18 @@ class FungiCanvas(mesa.visualization.VisualizationElement):
 
     def render(self, model):
         space_state = []
+        for i in range(len(model.substrate)):
+            for j in range(len(model.substrate[i])):
+                x = (i + 0.5) * model.cell_width
+                y = (j + 0.5) * model.cell_height
+                x = (x - model.space.x_min) / (model.space.x_max - model.space.x_min)
+                y = (y - model.space.y_min) / (model.space.y_max - model.space.y_min)
+                w = (model.cell_width - model.space.x_min) / (model.space.x_max - model.space.x_min)
+                h = (model.cell_height - model.space.y_min) / (model.space.y_max - model.space.y_min)
+                color = colors.hsv_to_rgb((0.4, model.substrate[i, j] / model.initial_substrate_level, 1))
+                color = colors.to_hex(color)
+                portrayal = {"Shape": "rect", "x": x, "y": y, "w": w, "h": h, "Color": color, "Filled": "true"}
+                space_state.append(portrayal)
         for obj in model.schedule.agents:
             portrayal = self.portrayal_method(obj)
             x, y = obj.pos
