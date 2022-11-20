@@ -2,8 +2,8 @@ import mesa
 import numpy as np
 import math
 
-from .hypha import Hypha
-from .spitzenkorper import Spitzenkorper
+from .agents import Spitzenkorper, Hypha
+
 
 class FungiModel(mesa.Model):
     
@@ -13,7 +13,17 @@ class FungiModel(mesa.Model):
         width=500,
         height=500,
         pixel_width=10,
-        pixel_height=10
+        pixel_height=10,
+        cell_width = 10,
+        cell_height = 10,
+        extension_rate=math.sqrt(128),
+        extension_threshold = 0.3,
+        lateral_branch_threshold = 0.5,
+        dichotomous_branch_threshold = 0.7,
+        dir_change_stdev = math.pi/6,
+        lateral_branch_prob = 0.1,
+        dichotomous_branch_prob = 0.1
+        
     ):
         """
         Create a new Flockers model.pip
@@ -28,23 +38,41 @@ class FungiModel(mesa.Model):
             cohere, separate, match: factors for the relative importance of
                     the three drives."""
         super().__init__()
+        
+        # initialize paramters
         self.width = width
-        self.pixel_width = pixel_width
-        if self.width % self.pixel_width != 0:
-            raise Exception('Width must be evenly divisible by pixel_width!')
         self.height = height
+        self.pixel_width = pixel_width
         self.pixel_height = pixel_height
-        if self.height % self.pixel_height != 0:
-            raise Exception('Height must be evenly divisible by pixel_height!')
+        self.cell_width = cell_width
+        self.cell_height = cell_height
+        self.extension_rate = extension_rate
+        self.extension_threshold = extension_threshold
+        self.lateral_branch_threshold = lateral_branch_threshold
+        self.dichotomous_branch_threshold = dichotomous_branch_threshold
+        self.dir_change_stdev = dir_change_stdev
+        self.lateral_branch_prob = lateral_branch_prob
+        self.dichotomous_branch_prob = dichotomous_branch_prob
+        
+        # set non-parameter values
         self.init_pop = 8
         self.schedule = mesa.time.RandomActivation(self)
         self.space = mesa.space.ContinuousSpace(width, height, False)
         self.hyphae = []
+        self.spitz_to_add = []
+
+        
+        if self.width % self.pixel_width != 0:
+            raise Exception('Width must be evenly divisible by pixel_width!')
+
+        if self.height % self.pixel_height != 0:
+            raise Exception('Height must be evenly divisible by pixel_height!')
+        
         for i in range(int(self.width / self.pixel_width)):
             self.hyphae.append([])
             for j in range(int(self.height / self.pixel_height)):
                 self.hyphae[i].append([])
-        self.spitz_to_add = []
+
         self.make_agents()
         self.running = True
 
@@ -54,7 +82,7 @@ class FungiModel(mesa.Model):
         for i in range(self.init_pop):
             pos = np.array((self.width / 2, self.height / 2))
             dir = i * (math.pi / 4)
-            size = 128 ** (1/2)
+            size = self.extension_rate
             spitz_x = math.cos(dir) * size + pos[0]
             spitz_y = math.sin(dir) * size + pos[1]
             spitz_pos = np.array((spitz_x, spitz_y))

@@ -3,8 +3,6 @@ import numpy as np
 import random
 import math
 
-from .hypha import Hypha
-
 class Spitzenkorper(mesa.Agent):
     def __init__(
         self,
@@ -49,11 +47,16 @@ class Spitzenkorper(mesa.Agent):
         return False, None, None # No collision
 
     def step(self):
+        
+        # if the hypha does not have enough substrate do not grow
+        if self.hypha.substrate < self.model.extension_threshold:
+            return
+        
         old_pos = self.pos
         
         self.direction = self.choose_direction()
         
-        size = self.choose_length()
+        size = self.model.extension_rate
         
         # choose x and y based 
         x = old_pos[0] + math.cos(self.direction) * size
@@ -207,7 +210,7 @@ class Spitzenkorper(mesa.Agent):
             hyphaeSet.update(hyphae[pixel[0]][pixel[1]].copy())
         return hyphaeSet
     
-    def add_hyphae(self, old_pos, new_pos, direction: float, hyphae: list, pixel_width: int, pixel_height: int, hypha: Hypha):
+    def add_hyphae(self, old_pos, new_pos, direction: float, hyphae: list, pixel_width: int, pixel_height: int, hypha):
                 
         pixel, end_pixel, stepX, stepY, tMaxX, tDeltaX, tMaxY, tDeltaY = self.get_search_values(old_pos, new_pos, direction, pixel_width, pixel_height)
         
@@ -284,25 +287,86 @@ class Spitzenkorper(mesa.Agent):
         
         return pixel,end_pixel,stepX,stepY,tMaxX,tDeltaX,tMaxY,tDeltaY
 
-    def choose_length(self):
-        return random.random() * math.sqrt(128)
-
     def choose_direction(self):
-        direction = ((random.random() * math.pi / 4) - (math.pi / 8)) + self.direction
+        # direction = ((random.random() * math.pi / 4) - (math.pi / 8)) + self.direction
+        
+        direction = self.direction + np.random.normal(scale = self.model.dir_change_stdev)
+
         return ((direction + math.pi) % (math.pi * 2)) - math.pi
         
 
     def branch_function(self):
+        # spitz = Spitzenkorper(
+        #         self.model.next_id(),
+        #         self.model,
+        #         self.pos,
+        #         self.direction + (math.pi / 4) * (random.random() + 0.05),
+        #         self.hypha
+        #     )
+        # self.direction -= math.pi / 4 * (random.random() + 0.05)
+        
         spitz = Spitzenkorper(
                 self.model.next_id(),
                 self.model,
                 self.pos,
-                self.direction + (math.pi / 4) * (random.random() + 0.05),
+                self.direction + (math.pi / 4),
                 self.hypha
             )
-        self.direction -= math.pi / 4 * (random.random() + 0.05)
+        self.direction -= math.pi / 4
             
         self.model.spitz_to_add.append(spitz)
 
     def branch_chance(self):
-        return random.random() < 0.3
+        return random.random() < self.model.dichotomous_branch_prob
+    
+
+    
+class Hypha(mesa.Agent):
+    def __init__(
+        self,
+        unique_id,
+        model,
+        pos,
+        end_pos,
+        direction,
+        size
+    ):
+        """
+        Create a new hypha agent.
+
+        Args:
+            unique_id: Unique agent identifyer.
+            pos: the origin position of the hypha
+            direction: the direction that the hypha grew from the origin
+            size: the length of the hypha
+        """
+        super().__init__(unique_id, model)
+        self.pos = np.array(pos)
+        self.end_pos = np.array(end_pos)
+        self.direction = direction
+        self.size = size
+        self.parents = []
+        self.children = []
+        self.substrate = 1.0
+
+    def step(self):
+        
+        if len(self.children) == 1:
+            if random.random() < self.model.lateral_branch_prob:
+                angle = np.random.normal(loc = math.pi/4, scale = math.pi/10)
+                
+                if random.random() < 0.5:
+                    angle = self.children[0].direction + angle
+                else:
+                    angle = self.children[0].direction - angle
+                    
+                spitz = Spitzenkorper(
+                    self.model.next_id(),
+                    self.model,
+                    self.end_pos,
+                    angle,
+                    self
+                )
+                
+                self.model.space.place_agent(spitz, self.end_pos)
+                self.model.schedule.add(spitz)

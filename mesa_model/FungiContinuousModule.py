@@ -1,5 +1,5 @@
 import mesa
-from .hypha import Hypha
+from .agents import Hypha
 
 # base for continuous visualisation borrowed from mesa example project boid_flockers
 
