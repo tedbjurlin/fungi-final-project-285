@@ -56,9 +56,9 @@ class Spitzenkorper(mesa.Agent):
         
         self.direction = self.choose_direction()
         
-        size = self.model.extension_rate
+        size = self.model.extension_rate * self.model.delta_t
         
-        # choose x and y based 
+        # choose x and y based on direction and size
         x = old_pos[0] + math.cos(self.direction) * size
         y = old_pos[1] + math.sin(self.direction) * size
         
@@ -294,7 +294,6 @@ class Spitzenkorper(mesa.Agent):
 
         return ((direction + math.pi) % (math.pi * 2)) - math.pi
         
-
     def branch_function(self):
         # spitz = Spitzenkorper(
         #         self.model.next_id(),
@@ -309,15 +308,15 @@ class Spitzenkorper(mesa.Agent):
                 self.model.next_id(),
                 self.model,
                 self.pos,
-                self.direction + (math.pi / 4),
+                self.direction + (math.pi / 8) * np.random.normal(loc = 1.0, scale = 0.25),
                 self.hypha
             )
-        self.direction -= math.pi / 4
+        self.direction -= math.pi / 8 * np.random.normal(loc = 1.0, scale = 0.25)
             
         self.model.spitz_to_add.append(spitz)
 
     def branch_chance(self):
-        return random.random() < self.model.dichotomous_branch_prob
+        return random.random() < self.model.dichotomous_branch_prob * self.model.delta_t
     
 
     
@@ -347,7 +346,7 @@ class Hypha(mesa.Agent):
         self.size = size
         self.parents = []
         self.children = []
-        self.substrate = 1.0
+        self.substrate = 0.1
 
     def step(self):
         
@@ -370,3 +369,26 @@ class Hypha(mesa.Agent):
                 
                 self.model.space.place_agent(spitz, self.end_pos)
                 self.model.schedule.add(spitz)
+                
+        model_substrate = self.model.substrate[int(self.end_pos[0] / self.model.cell_width), int(self.end_pos[1] / self.model.cell_height)]
+        
+        uptake = self.model.uptake_coefficient_1 * self.model.delta_t * \
+            (self.substrate / (self.substrate + self.model.uptake_coefficient_2)) * \
+            model_substrate
+            
+        self.substrate += uptake
+        
+        self.model.substrate[int(self.end_pos[0] / self.model.cell_width), int(self.end_pos[1] / self.model.cell_height)] -= uptake
+        
+        diffused_substrate = 0
+        
+        for child in self.children:
+            diffused_substrate += self.model.internal_diffusion_coefficient * (child.substrate - self.substrate) / self.model.cell_width
+        
+        for parent in self.parents:
+            diffused_substrate += self.model.internal_diffusion_coefficient * (parent.substrate - self.substrate) / self.model.cell_width
+            
+        self.substrate += diffused_substrate * self.model.delta_t
+            
+        
+            

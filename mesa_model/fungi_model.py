@@ -22,7 +22,12 @@ class FungiModel(mesa.Model):
         dichotomous_branch_threshold = 0.7,
         dir_change_stdev = math.pi/6,
         lateral_branch_prob = 0.1,
-        dichotomous_branch_prob = 0.1
+        dichotomous_branch_prob = 0.1,
+        delta_t = 1,
+        initial_substrate_level = 10,
+        uptake_coefficient_1 = 1,
+        uptake_coefficient_2 = 1,
+        internal_diffusion_coefficient = 0.5
         
     ):
         """
@@ -53,12 +58,18 @@ class FungiModel(mesa.Model):
         self.dir_change_stdev = dir_change_stdev
         self.lateral_branch_prob = lateral_branch_prob
         self.dichotomous_branch_prob = dichotomous_branch_prob
+        self.delta_t = delta_t
+        self.initial_substrate_level = initial_substrate_level
+        self.uptake_coefficient_1 = uptake_coefficient_1
+        self.uptake_coefficient_2 = uptake_coefficient_2
+        self.internal_diffusion_coefficient = internal_diffusion_coefficient
         
         # set non-parameter values
         self.init_pop = 8
-        self.schedule = mesa.time.RandomActivation(self)
+        self.schedule = mesa.time.BaseScheduler(self)
         self.space = mesa.space.ContinuousSpace(width, height, False)
         self.hyphae = []
+        self.substrate = np.full((int(self.width / self.cell_width), int(self.height / self.cell_height)), self.initial_substrate_level, dtype=np.float32)
         self.spitz_to_add = []
 
         
@@ -67,6 +78,12 @@ class FungiModel(mesa.Model):
 
         if self.height % self.pixel_height != 0:
             raise Exception('Height must be evenly divisible by pixel_height!')
+        
+        if self.width % self.cell_width != 0:
+            raise Exception('Width must be evenly divisible by cell_width!')
+
+        if self.height % self.cell_height != 0:
+            raise Exception('Height must be evenly divisible by cell_height!')
         
         for i in range(int(self.width / self.pixel_width)):
             self.hyphae.append([])
@@ -82,7 +99,7 @@ class FungiModel(mesa.Model):
         for i in range(self.init_pop):
             pos = np.array((self.width / 2, self.height / 2))
             dir = i * (math.pi / 4)
-            size = self.extension_rate
+            size = self.extension_rate * self.delta_t
             spitz_x = math.cos(dir) * size + pos[0]
             spitz_y = math.sin(dir) * size + pos[1]
             spitz_pos = np.array((spitz_x, spitz_y))

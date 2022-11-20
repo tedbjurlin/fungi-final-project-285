@@ -15,8 +15,8 @@ def fungi_draw(agent):
 
 fungi_canvas = FungiCanvas(fungi_draw, 500, 500)
 model_params = {
-    "width": 2000,
-    "height": 2000,
+    "width": 500,
+    "height": 500,
     "pixel_width": 5,
     "pixel_height": 5,
     "cell_width": 10,
@@ -25,9 +25,14 @@ model_params = {
     "extension_threshold": 0.3,
     "lateral_branch_threshold": 0.5,
     "dichotomous_branch_threshold": 0.7,
-    "dir_change_stdev": math.pi/6,
+    "dir_change_stdev": math.pi/10,
     "lateral_branch_prob": 0.1,
-    "dichotomous_branch_prob": 0.1
+    "dichotomous_branch_prob": 0.1,
+    "delta_t": 1,
+    "initial_substrate_level": 10,
+    "uptake_coefficient_1": 1,
+    "uptake_coefficient_2": 1,
+    "internal_diffusion_coefficient": 0.5
 }
 
 server = mesa.visualization.ModularServer(
