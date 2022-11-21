@@ -32,7 +32,7 @@ class FungiCanvas(mesa.visualization.VisualizationElement):
                 y = (y - model.space.y_min) / (model.space.y_max - model.space.y_min)
                 w = (model.cell_width - model.space.x_min) / (model.space.x_max - model.space.x_min)
                 h = (model.cell_height - model.space.y_min) / (model.space.y_max - model.space.y_min)
-                color = colors.hsv_to_rgb((0.4, model.substrate[i, j] / model.initial_substrate_level, 1))
+                color = colors.hsv_to_rgb((0.4, .9, 1))
                 color = colors.to_hex(color)
                 portrayal = {"Shape": "rect", "x": x, "y": y, "w": w, "h": h, "Color": color, "Filled": "true"}
                 space_state.append(portrayal)

@@ -15,23 +15,22 @@ def fungi_draw(agent):
 
 fungi_canvas = FungiCanvas(fungi_draw, 500, 500)
 model_params = {
-    "width": 500,
-    "height": 500,
+    "width": 5000,
+    "height": 5000,
     "pixel_width": 5,
     "pixel_height": 5,
-    "cell_width": 10,
-    "cell_height": 10,
-    "extension_rate": math.sqrt(128),
-    "extension_threshold": 0.3,
-    "lateral_branch_threshold": 0.5,
-    "dichotomous_branch_threshold": 0.7,
-    "dir_change_stdev": math.pi/10,
+    "cell_width": 100,
+    "cell_height": 100,
+    "extension_rate": 5000,
+    "extension_threshold": 1e-12,
+    "lateral_branch_threshold": 1e-11,
+    "dichotomous_branch_threshold": 1e-11,
     "lateral_branch_prob": 0.1,
     "dichotomous_branch_prob": 0.1,
-    "delta_t": 1,
-    "initial_substrate_level": 10,
-    "uptake_coefficient_1": 1,
-    "uptake_coefficient_2": 1,
+    "delta_t": 0.01,
+    "initial_substrate_level": 4e-9,
+    "uptake_coefficient_1": 600,
+    "uptake_coefficient_2": 4e-9,
     "internal_diffusion_coefficient": 0.5
 }
 

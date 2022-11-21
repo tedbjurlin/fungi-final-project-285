@@ -2,7 +2,7 @@ import numpy as np
 from fungi_model import FungiModel
 
         
-model = FungiModel(500, 500, 10, 10)
+model = FungiModel()
 
 for i in range(1000):
     model.step()

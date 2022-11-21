@@ -160,6 +160,10 @@ class Spitzenkorper(mesa.Agent):
                     size
                 )
                 
+                hypha.substrate = (self.model.extension_threshold * 0.35) * (size / (self.model.extension_rate * self.model.delta_t))
+                
+                self.hypha.substrate -= hypha.substrate * 2
+                
                 hypha.parents.append(self.hypha)
                 self.hypha.children.append(hypha)
                 self.hypha = hypha
@@ -176,6 +180,10 @@ class Spitzenkorper(mesa.Agent):
         hypha.parents.append(self.hypha)               
         self.hypha.children.append(hypha)
         
+        hypha.substrate = (self.model.extension_threshold * 0.35)
+                
+        self.hypha.substrate -= hypha.substrate * 2
+        
         # the spitzenkorper's hypha is now the new one
         self.hypha = hypha
         
@@ -183,7 +191,8 @@ class Spitzenkorper(mesa.Agent):
         self.model.hyphae = self.add_hyphae(old_pos, self.pos, self.direction, self.model.hyphae, self.model.pixel_width, self.model.pixel_height, self.hypha)
         
         # decide to branch
-        if self.branch_chance():
+        if self.hypha.substrate > self.model.dichotomous_branch_threshold and \
+            random.random() < self.model.dichotomous_branch_prob * self.model.delta_t * self.hypha.substrate:
             self.branch_function()
         
         # update space and schedule
@@ -290,8 +299,15 @@ class Spitzenkorper(mesa.Agent):
     def choose_direction(self):
         # direction = ((random.random() * math.pi / 4) - (math.pi / 8)) + self.direction
         
-        direction = self.direction + np.random.normal(scale = self.model.dir_change_stdev)
-
+        rand = random.random()
+        
+        if rand < 1/16:
+            direction = self.direction - math.pi/13
+        elif rand > 15/16:
+            direction = self.direction + math.pi/13
+        else:
+            direction = self.direction
+        
         return ((direction + math.pi) % (math.pi * 2)) - math.pi
         
     def branch_function(self):
@@ -314,11 +330,7 @@ class Spitzenkorper(mesa.Agent):
         self.direction -= math.pi / 8 * np.random.normal(loc = 1.0, scale = 0.25)
             
         self.model.spitz_to_add.append(spitz)
-
-    def branch_chance(self):
-        return random.random() < self.model.dichotomous_branch_prob * self.model.delta_t
-    
-
+ 
     
 class Hypha(mesa.Agent):
     def __init__(
@@ -351,8 +363,10 @@ class Hypha(mesa.Agent):
     def step(self):
         
         if len(self.children) == 1:
-            if random.random() < self.model.lateral_branch_prob:
-                angle = np.random.normal(loc = math.pi/4, scale = math.pi/10)
+            if self.substrate > self.model.lateral_branch_threshold and \
+                random.random() < self.model.lateral_branch_prob * self.model.delta_t * self.substrate:
+                
+                angle = np.random.normal(loc = math.pi/3, scale = math.pi/12)
                 
                 if random.random() < 0.5:
                     angle = self.children[0].direction + angle

@@ -2,7 +2,7 @@ import mesa
 import numpy as np
 import math
 
-from .agents import Spitzenkorper, Hypha
+from agents import Spitzenkorper, Hypha
 
 
 class FungiModel(mesa.Model):
@@ -10,38 +10,45 @@ class FungiModel(mesa.Model):
     
     def __init__(
         self,
-        width=500,
-        height=500,
+        width=5000,
+        height=5000,
         pixel_width=10,
         pixel_height=10,
-        cell_width = 10,
-        cell_height = 10,
-        extension_rate=math.sqrt(128),
-        extension_threshold = 0.3,
-        lateral_branch_threshold = 0.5,
-        dichotomous_branch_threshold = 0.7,
-        dir_change_stdev = math.pi/6,
+        cell_width = 100,
+        cell_height = 100,
+        extension_rate=5000,
+        extension_threshold = 1e-12,
+        lateral_branch_threshold = 1e-11,
+        dichotomous_branch_threshold = 1e-11,
         lateral_branch_prob = 0.1,
         dichotomous_branch_prob = 0.1,
-        delta_t = 1,
-        initial_substrate_level = 10,
-        uptake_coefficient_1 = 1,
-        uptake_coefficient_2 = 1,
+        delta_t = 0.01,
+        initial_substrate_level = 4e-9,
+        uptake_coefficient_1 = 600,
+        uptake_coefficient_2 = 4e-9,
         internal_diffusion_coefficient = 0.5
         
     ):
         """
-        Create a new Flockers model.pip
+        Create a new Fungi Model
 
         Args:
-            population: Number of Boids
             width, height: Size of the space.
-            speed: How fast should the Boids move.
-            vision: How far around should each Boid look for its neighbors
-            separation: What's the minimum distance each Boid will attempt to
-                    keep from any other
-            cohere, separate, match: factors for the relative importance of
-                    the three drives."""
+            pixel_width, pixel_height: Size of pixels for fast pixel traversal.
+            cell_width, cell_height: Size of cells of substrate.
+            extension_rate: Average growth rate of hypha in micrometers / day.
+            extension_threshold: Quantity of substrate required by hypha to extend.
+            lateral_branch_threshold: Quantity of substrate required by hypha to branch laterally.
+            dichotomous_branch_threshold: Quantity of substrate required by hypha to branch dichotomously.
+            lateral_branch_prob: The probability of the hypha branching laterally.
+            dichotomous_branch_prob: The probability of the hypha branching dichotomously.
+            delta_t: Change in time over each step in days.
+            initial_substrate_level: Initial substrate concentration in mol / micrometer^2.
+            uptake_coefficient_1: The first coefficient in the uptake equation.
+            uptake_coefficient_2: The second coefficient in the uptake equation.
+            internal_diffusion_coefficient: The coefficient for internal diffusion.
+        
+        """
         super().__init__()
         
         # initialize paramters
@@ -55,7 +62,6 @@ class FungiModel(mesa.Model):
         self.extension_threshold = extension_threshold
         self.lateral_branch_threshold = lateral_branch_threshold
         self.dichotomous_branch_threshold = dichotomous_branch_threshold
-        self.dir_change_stdev = dir_change_stdev
         self.lateral_branch_prob = lateral_branch_prob
         self.dichotomous_branch_prob = dichotomous_branch_prob
         self.delta_t = delta_t
@@ -69,7 +75,7 @@ class FungiModel(mesa.Model):
         self.schedule = mesa.time.BaseScheduler(self)
         self.space = mesa.space.ContinuousSpace(width, height, False)
         self.hyphae = []
-        self.substrate = np.full((int(self.width / self.cell_width), int(self.height / self.cell_height)), self.initial_substrate_level, dtype=np.float32)
+        self.substrate = np.full((int(self.width / self.cell_width), int(self.height / self.cell_height)), self.initial_substrate_level * self.cell_width * self.cell_height, dtype=float)
         self.spitz_to_add = []
 
         
