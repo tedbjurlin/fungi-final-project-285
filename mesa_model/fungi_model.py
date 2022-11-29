@@ -1,8 +1,9 @@
 import mesa
 import numpy as np
 import math
+from mesa import DataCollector
 
-from agents import Spitzenkorper, Hypha
+from .agents import Spitzenkorper, Hypha
 
 
 class FungiModel(mesa.Model):
@@ -20,11 +21,11 @@ class FungiModel(mesa.Model):
         extension_threshold = 1e-12,
         lateral_branch_threshold = 1e-11,
         dichotomous_branch_threshold = 1e-11,
-        lateral_branch_prob = 0.1,
-        dichotomous_branch_prob = 0.1,
+        lateral_branch_prob = 2.25e-15,
+        dichotomous_branch_prob = 2.25e-15,
         delta_t = 0.01,
-        initial_substrate_level = 4e-9,
-        uptake_coefficient_1 = 600,
+        initial_substrate_level = 3e-8,
+        uptake_coefficient_1 = 2,
         uptake_coefficient_2 = 4e-9,
         internal_diffusion_coefficient = 0.5
         
@@ -75,9 +76,24 @@ class FungiModel(mesa.Model):
         self.schedule = mesa.time.BaseScheduler(self)
         self.space = mesa.space.ContinuousSpace(width, height, False)
         self.hyphae = []
-        self.substrate = np.full((int(self.width / self.cell_width), int(self.height / self.cell_height)), self.initial_substrate_level * self.cell_width * self.cell_height, dtype=float)
+        self.substrate = np.full((int(self.width / self.cell_width), int(self.height / self.cell_height)), self.initial_substrate_level, dtype=float)
         self.spitz_to_add = []
-
+        self.hypha_length = 0
+        
+        dataCollectorParameters = dict(
+            model_reporters={
+                "agent_count": (lambda m: m.schedule.get_agent_count()),
+                "total_hypha_length": (lambda m: m.hypha_length),
+                "total_substrate": (lambda m: m.get_substrate())
+                },
+            # agent_reporters={
+            #     "name": (lambda a:a.unique_id),
+            #     "hyphal_length": (lambda a: a.size if isinstance(a, Hypha) else None),
+            #     "substrate": (lambda a: a.substrate if isinstance(a, Hypha) else None),
+            #     }
+        )
+        
+        self.datacollector = DataCollector(**dataCollectorParameters)
         
         if self.width % self.pixel_width != 0:
             raise Exception('Width must be evenly divisible by pixel_width!')
@@ -98,6 +114,12 @@ class FungiModel(mesa.Model):
 
         self.make_agents()
         self.running = True
+        
+    def get_substrate(self):
+        substrate = 0
+        for i in range(int(self.width / self.cell_width)):
+            for j in range(int(self.height / self.cell_height)):
+                substrate += self.substrate * (self.cell_width * self.cell_height)
 
     def make_agents(self):
         
@@ -141,6 +163,7 @@ class FungiModel(mesa.Model):
             self.schedule.add(spitz)
 
     def step(self):
+        self.hypha_length = 0
         self.schedule.step()
         
         for s in self.spitz_to_add:
@@ -148,6 +171,5 @@ class FungiModel(mesa.Model):
             self.schedule.add(s)
             
         self.spitz_to_add = []
-        
-        if self.schedule.get_agent_count() == 0:
-            self.running = False
+            
+        self.datacollector.collect(self)

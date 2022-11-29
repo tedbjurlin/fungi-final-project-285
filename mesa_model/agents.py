@@ -1,6 +1,5 @@
 import mesa
 import numpy as np
-import random
 import math
 
 class Spitzenkorper(mesa.Agent):
@@ -47,14 +46,46 @@ class Spitzenkorper(mesa.Agent):
         return False, None, None # No collision
 
     def step(self):
-        
+                
         # if the hypha does not have enough substrate do not grow
         if self.hypha.substrate < self.model.extension_threshold:
             return
         
         old_pos = self.pos
         
-        self.direction = self.choose_direction()
+        found_collision = False
+        
+        dirs = [0, math.pi / 26, -math.pi / 26, math.pi / 13, -math.pi / 13]
+        
+        collisions = {0: float('inf'), 1: float('inf'), 2: float('inf'), 3: float('inf'), 4: float('inf')}
+        
+        for i in range(5):
+            
+            new_dir = self.direction + dirs[i]
+            
+            new_dir = ((new_dir + math.pi) % (math.pi * 2)) - math.pi
+            
+            x = old_pos[0] + math.cos(new_dir) * 25
+            y = old_pos[1] + math.sin(new_dir) * 25
+            
+            new_pos = np.array((x, y))
+            
+            hyphaSet = self.find_hyphae(old_pos, new_pos, new_dir, self.model.hyphae, self.model.pixel_width, self.model.pixel_height)
+            
+            for h in hyphaSet:
+                b, x0, y0 = self.get_intersection(old_pos, new_pos, h.pos, h.end_pos)
+                if b and h != self.hypha:
+                    
+                    size = self.model.space.get_distance(old_pos, np.array((x0, y0)))
+                    
+                    collisions[i] = min(collisions[i], size)
+                    
+                    found_collision = True
+
+        if not found_collision:
+            self.direction = self.choose_direction()
+        else:
+            self.direction = ((self.direction + dirs[max(collisions, key=collisions.get)] + math.pi) % (math.pi * 2)) - math.pi
         
         size = self.model.extension_rate * self.model.delta_t
         
@@ -180,7 +211,7 @@ class Spitzenkorper(mesa.Agent):
         hypha.parents.append(self.hypha)               
         self.hypha.children.append(hypha)
         
-        hypha.substrate = (self.model.extension_threshold * 0.35)
+        hypha.substrate = (self.hypha.substrate / 2)
                 
         self.hypha.substrate -= hypha.substrate * 2
         
@@ -192,7 +223,7 @@ class Spitzenkorper(mesa.Agent):
         
         # decide to branch
         if self.hypha.substrate > self.model.dichotomous_branch_threshold and \
-            random.random() < self.model.dichotomous_branch_prob * self.model.delta_t * self.hypha.substrate:
+            self.random.random() < 0.01 + (self.model.dichotomous_branch_prob * self.model.delta_t * self.hypha.substrate):
             self.branch_function()
         
         # update space and schedule
@@ -299,7 +330,7 @@ class Spitzenkorper(mesa.Agent):
     def choose_direction(self):
         # direction = ((random.random() * math.pi / 4) - (math.pi / 8)) + self.direction
         
-        rand = random.random()
+        rand = self.random.random()
         
         if rand < 1/16:
             direction = self.direction - math.pi/13
@@ -324,10 +355,10 @@ class Spitzenkorper(mesa.Agent):
                 self.model.next_id(),
                 self.model,
                 self.pos,
-                self.direction + (math.pi / 8) * np.random.normal(loc = 1.0, scale = 0.25),
+                self.direction + np.random.normal(loc = (math.pi / 8), scale = (math.pi / 32)),
                 self.hypha
             )
-        self.direction -= math.pi / 8 * np.random.normal(loc = 1.0, scale = 0.25)
+        self.direction -= np.random.normal(loc = (math.pi / 8), scale = (math.pi / 32))
             
         self.model.spitz_to_add.append(spitz)
  
@@ -358,17 +389,17 @@ class Hypha(mesa.Agent):
         self.size = size
         self.parents = []
         self.children = []
-        self.substrate = 0.1
+        self.substrate = 4e-9
 
     def step(self):
         
         if len(self.children) == 1:
             if self.substrate > self.model.lateral_branch_threshold and \
-                random.random() < self.model.lateral_branch_prob * self.model.delta_t * self.substrate:
+                self.random.random() < 0.01 + (self.model.lateral_branch_prob * self.model.delta_t * self.substrate):
                 
                 angle = np.random.normal(loc = math.pi/3, scale = math.pi/12)
                 
-                if random.random() < 0.5:
+                if self.random.random() < 0.5:
                     angle = self.children[0].direction + angle
                 else:
                     angle = self.children[0].direction - angle
@@ -384,11 +415,22 @@ class Hypha(mesa.Agent):
                 self.model.space.place_agent(spitz, self.end_pos)
                 self.model.schedule.add(spitz)
                 
+        uptake = (3e-8 * self.model.delta_t)
+                
         model_substrate = self.model.substrate[int(self.end_pos[0] / self.model.cell_width), int(self.end_pos[1] / self.model.cell_height)]
         
-        uptake = self.model.uptake_coefficient_1 * self.model.delta_t * \
-            (self.substrate / (self.substrate + self.model.uptake_coefficient_2)) * \
-            model_substrate
+        # uptake = self.model.uptake_coefficient_1 
+        
+        # uptake *= self.model.delta_t 
+        
+        # flow = (self.substrate / (self.substrate + self.model.uptake_coefficient_2)) 
+        
+        # uptake *= flow
+        
+        # uptake *= model_substrate
+        
+        if uptake > model_substrate:
+            uptake = model_substrate
             
         self.substrate += uptake
         
@@ -397,12 +439,14 @@ class Hypha(mesa.Agent):
         diffused_substrate = 0
         
         for child in self.children:
-            diffused_substrate += self.model.internal_diffusion_coefficient * (child.substrate - self.substrate) / self.model.cell_width
+            diffused_substrate += self.model.internal_diffusion_coefficient * (child.substrate - self.substrate) / self.model.extension_rate
         
         for parent in self.parents:
-            diffused_substrate += self.model.internal_diffusion_coefficient * (parent.substrate - self.substrate) / self.model.cell_width
+            diffused_substrate += self.model.internal_diffusion_coefficient * (parent.substrate - self.substrate) / self.model.extension_rate
             
         self.substrate += diffused_substrate * self.model.delta_t
+        
+        self.model.hypha_length += self.size
             
         
             

@@ -8,9 +8,9 @@ import math
 
 def fungi_draw(agent):
     if isinstance(agent, Hypha):    
-        return {"Shape": "line", "w": 1, "Color": "Black"}
+        return {"Shape": "line", "w": 2, "Color": "Black"}
     else:
-        return {"Shape": "circle", "r": 0.5, "Filled": "true", "Color": "Red"}
+        return {"Shape": "circle", "r": 1, "Filled": "true", "Color": "Red"}
 
 
 fungi_canvas = FungiCanvas(fungi_draw, 500, 500)
@@ -25,13 +25,11 @@ model_params = {
     "extension_threshold": 1e-12,
     "lateral_branch_threshold": 1e-11,
     "dichotomous_branch_threshold": 1e-11,
-    "lateral_branch_prob": 0.1,
-    "dichotomous_branch_prob": 0.1,
     "delta_t": 0.01,
-    "initial_substrate_level": 4e-9,
-    "uptake_coefficient_1": 600,
+    "initial_substrate_level": 3e-8,
+    "uptake_coefficient_1": 2,
     "uptake_coefficient_2": 4e-9,
-    "internal_diffusion_coefficient": 0.5
+    "internal_diffusion_coefficient": 0.5,
 }
 
 server = mesa.visualization.ModularServer(
