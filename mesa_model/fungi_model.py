@@ -86,7 +86,10 @@ class FungiModel(mesa.Model):
             model_reporters={
                 "agent_count": (lambda m: m.schedule.get_agent_count()),
                 "total_hypha_length": (lambda m: m.hypha_length),
-                "total_substrate": (lambda m: m.get_substrate())
+                "total_substrate": (lambda m: m.get_substrate()),
+                "num_hypha": (lambda m: m.count_type(self, Hypha)),
+                "num_spitzenkorpers": (lambda m: m.count_type(self, Spitzenkorper)),
+                "extesion_rate": (lambda m: m.extension_rate)
                 },
             # agent_reporters={
             #     "name": (lambda a:a.unique_id),
@@ -165,6 +168,17 @@ class FungiModel(mesa.Model):
             
             self.schedule.add(hypha)
             self.schedule.add(spitz)
+            
+    @staticmethod
+    def count_type(model, type):
+        """
+        Helper method to count trees in a given condition in a given model.
+        """
+        count = 0
+        for agent in model.schedule.agents:
+            if isinstance(agent, type):
+                count += 1
+        return count
 
     def step(self):
         self.hypha_length = 0
