@@ -1,0 +1,7 @@
+pandas
+seaborn
+sklearn
+jupyter
+ipykernel
+pipwin
+mesa
