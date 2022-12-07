@@ -27,7 +27,8 @@ class FungiModel(mesa.Model):
         initial_substrate_level = 3e-8,
         uptake_coefficient_1 = 2,
         uptake_coefficient_2 = 4e-9,
-        internal_diffusion_coefficient = 0.5
+        internal_diffusion_coefficient = 0.5,
+        search_length = 25000
         
     ):
         """
@@ -70,6 +71,7 @@ class FungiModel(mesa.Model):
         self.uptake_coefficient_1 = uptake_coefficient_1
         self.uptake_coefficient_2 = uptake_coefficient_2
         self.internal_diffusion_coefficient = internal_diffusion_coefficient
+        self.search_length = search_length
         
         # set non-parameter values
         self.init_pop = 8
@@ -119,7 +121,9 @@ class FungiModel(mesa.Model):
         substrate = 0
         for i in range(int(self.width / self.cell_width)):
             for j in range(int(self.height / self.cell_height)):
-                substrate += self.substrate * (self.cell_width * self.cell_height)
+                substrate += self.substrate[i, j] * (self.cell_width * self.cell_height)
+        
+        return substrate
 
     def make_agents(self):
         

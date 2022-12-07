@@ -45,6 +45,41 @@ class Spitzenkorper(mesa.Agent):
 
         return False, None, None # No collision
 
+    def avoid_collisions(self, old_pos):
+        found_collision = False
+        
+        dirs = [0, math.pi / 26, -math.pi / 26, math.pi / 13, -math.pi / 13]
+        
+        collisions = {0: float('inf'), 1: float('inf'), 2: float('inf'), 3: float('inf'), 4: float('inf')}
+        
+        for i in range(5):
+        
+            new_dir = self.direction + dirs[i]
+        
+            new_dir = ((new_dir + math.pi) % (math.pi * 2)) - math.pi
+        
+            x = old_pos[0] + math.cos(new_dir) * (self.model.search_length * self.model.delta_t)
+            y = old_pos[1] + math.sin(new_dir) * (self.model.search_length * self.model.delta_t)
+        
+            new_pos = np.array((x, y))
+        
+            hyphaSet = self.find_hyphae(old_pos, new_pos, new_dir, self.model.hyphae, self.model.pixel_width, self.model.pixel_height)
+        
+            for h in hyphaSet:
+                b, x0, y0 = self.get_intersection(old_pos, new_pos, h.pos, h.end_pos)
+                if b and h != self.hypha:
+        
+                    size = self.model.space.get_distance(old_pos, np.array((x0, y0)))
+        
+                    collisions[i] = min(collisions[i], size)
+        
+                    found_collision = True
+        
+        if not found_collision:
+            self.direction = self.choose_direction()
+        else:
+            self.direction = ((self.direction + dirs[max(collisions, key=collisions.get)] + math.pi) % (math.pi * 2)) - math.pi
+
     def step(self):
                 
         # if the hypha does not have enough substrate do not grow
@@ -53,39 +88,13 @@ class Spitzenkorper(mesa.Agent):
         
         old_pos = self.pos
         
-        found_collision = False
         
-        dirs = [0, math.pi / 26, -math.pi / 26, math.pi / 13, -math.pi / 13]
+        model_substrate = self.model.substrate[int(old_pos[0] / self.model.cell_width), int(old_pos[1] / self.model.cell_height)]
         
-        collisions = {0: float('inf'), 1: float('inf'), 2: float('inf'), 3: float('inf'), 4: float('inf')}
-        
-        for i in range(5):
-            
-            new_dir = self.direction + dirs[i]
-            
-            new_dir = ((new_dir + math.pi) % (math.pi * 2)) - math.pi
-            
-            x = old_pos[0] + math.cos(new_dir) * 25
-            y = old_pos[1] + math.sin(new_dir) * 25
-            
-            new_pos = np.array((x, y))
-            
-            hyphaSet = self.find_hyphae(old_pos, new_pos, new_dir, self.model.hyphae, self.model.pixel_width, self.model.pixel_height)
-            
-            for h in hyphaSet:
-                b, x0, y0 = self.get_intersection(old_pos, new_pos, h.pos, h.end_pos)
-                if b and h != self.hypha:
-                    
-                    size = self.model.space.get_distance(old_pos, np.array((x0, y0)))
-                    
-                    collisions[i] = min(collisions[i], size)
-                    
-                    found_collision = True
-
-        if not found_collision:
-            self.direction = self.choose_direction()
+        if model_substrate / self.model.initial_substrate_level * 1.1 < self.random.random():
+            self.avoid_collisions(old_pos)
         else:
-            self.direction = ((self.direction + dirs[max(collisions, key=collisions.get)] + math.pi) % (math.pi * 2)) - math.pi
+            self.direction = self.choose_direction()
         
         size = self.model.extension_rate * self.model.delta_t
         
@@ -191,9 +200,9 @@ class Spitzenkorper(mesa.Agent):
                     size
                 )
                 
-                hypha.substrate = (self.model.extension_threshold * 0.35) * (size / (self.model.extension_rate * self.model.delta_t))
+                hypha.substrate = (self.model.extension_threshold * 0.5) * (size / (self.model.extension_rate * self.model.delta_t))
                 
-                self.hypha.substrate -= hypha.substrate * 2
+                self.hypha.substrate -=  hypha.substrate + (self.model.extension_threshold * 0.25)
                 
                 hypha.parents.append(self.hypha)
                 self.hypha.children.append(hypha)
@@ -238,16 +247,17 @@ class Spitzenkorper(mesa.Agent):
         hyphaeSet = set()
         hyphaeSet.update(hyphae[pixel[0]][pixel[1]])
         
-        while not np.equal(pixel, end_pixel).all():
-            if 0 > pixel[0] or 0 > pixel[1]:
-                breakpoint()
+        while not np.equal(pixel, end_pixel).all() and 0 <= pixel[0] < len(hyphae) \
+                and 0 <= pixel[1] < len(hyphae[0]):
             if tMaxX < tMaxY:
                 tMaxX += tDeltaX
                 pixel[0] += stepX
             else:
                 tMaxY += tDeltaY
                 pixel[1] += stepY
-            hyphaeSet.update(hyphae[pixel[0]][pixel[1]].copy())
+            if 0 <= pixel[0] < len(hyphae) \
+                and 0 <= pixel[1] < len(hyphae[0]):
+                hyphaeSet.update(hyphae[pixel[0]][pixel[1]].copy())
         return hyphaeSet
     
     def add_hyphae(self, old_pos, new_pos, direction: float, hyphae: list, pixel_width: int, pixel_height: int, hypha):
