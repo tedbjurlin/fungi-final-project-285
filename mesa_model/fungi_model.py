@@ -18,6 +18,17 @@ class FungiModel(mesa.Model):
         cell_width = 100,
         cell_height = 100,
         extension_rate=5000,
+        
+        # Mycoacia meridionalis  1100 µm / day
+
+        # Fomes fomentarius     1280 µm / day
+
+        # lentinus crinitus     3060 µm / day
+
+        # Xylobolus subpileatus     1000 µm/day 
+        
+        # Phlebia acerina       7400 μm/day ​
+        
         extension_threshold = 1e-12,
         lateral_branch_threshold = 1e-11,
         dichotomous_branch_threshold = 1e-11,
